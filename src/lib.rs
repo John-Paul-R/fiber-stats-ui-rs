@@ -1,11 +1,12 @@
 #![feature(iter_intersperse)]
 
+use cfg_if::cfg_if;
+
 pub mod app;
 mod stats_page;
 mod param_helper;
 mod my_uuid;
-
-use cfg_if::cfg_if;
+mod requests;
 
 cfg_if! {
 if #[cfg(feature = "hydrate")] {
