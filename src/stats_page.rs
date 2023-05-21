@@ -1,3 +1,4 @@
+use fibermc_sdk::models::ModResponse;
 use leptos::*;
 use leptos_router::{IntoParam, Params, ParamsError};
 
@@ -64,15 +65,31 @@ pub fn StatsPage(
             .collect::<String>()),
     );
 
-    let mod_name = move || mod_response.with(cx, |res| res
+    let mod_overview = move || mod_response.with(cx, |res| res
         .as_ref()
-        .map(|m| m.name.to_owned()),
+        .map(|m| view! {cx, <StatsPageModSummary mod_response=m.clone()/>}),
     );
 
     view! { cx,
-        <h1>"Stats for " {mod_name}</h1>
-        <h2>"("{mod_id}")"</h2>
+        {mod_overview}
         <button on:click=on_click>"Click Me: " {count}</button>
         <div>{mod_downloads_over_time_str}</div>
+    }
+}
+
+#[component]
+#[allow(non_snake_case)]
+fn StatsPageModSummary(
+    cx: Scope,
+    mod_response: ModResponse,
+) -> impl IntoView {
+    view! { cx,
+        <h1>"Stats for " {mod_response.name}</h1>
+        <div>"("{mod_response.id.hyphenated().to_string()}")"</div>
+        <p>{mod_response.summary}</p>
+        <div>
+            <b>"Downloads: "</b>
+            {mod_response.download_count}
+        </div>
     }
 }
