@@ -1,10 +1,8 @@
-use std::fmt::Debug;
 use leptos::*;
-use leptos::leptos_dom::ErrorKey;
 use leptos_meta::*;
 use leptos_router::*;
-use uuid::{uuid, Uuid};
-use crate::stats_page::{StatsPage,StatsPageParams};
+
+use crate::stats_page::{StatsPage, StatsPageParams};
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {

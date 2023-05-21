@@ -1,20 +1,8 @@
-use std::fmt::{Debug, Formatter};
-use std::future;
-use std::future::{Future, IntoFuture};
-use std::num::ParseIntError;
-use std::string::ParseError;
-use std::sync::Arc;
-
 use fibermc_sdk::apis::configuration::Configuration;
-use fibermc_sdk::apis::mods_api::ApiV10ModsIdStatsGetError;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse};
-use futures::{FutureExt, TryFutureExt};
-use futures::future::OptionFuture;
 use leptos::*;
-use leptos_router::{IntoParam, Params, ParamsError, use_params, use_params_map};
+use leptos_router::{IntoParam, Params, ParamsError};
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::my_uuid::MyUuid;
 
@@ -25,6 +13,7 @@ pub struct StatsPageParams {
 }
 
 #[component]
+#[allow(non_snake_case)]
 pub fn StatsPage(
     cx: Scope,
     params: Memo<Result<StatsPageParams, ParamsError>>
@@ -40,36 +29,35 @@ pub fn StatsPage(
 
     let (count, set_count) = create_signal(cx, 0);
 
-    let mod_id_str = mod_id().ok().unwrap().get_uuid().hyphenated().to_string();
     let on_click = move |_| set_count.update(|count| *count += 1);
 
     log!("render, kinda!");
 
     let pretty_mod_id = move || mod_id().ok().map(|id| id.to_pretty_string());
-    let requestConfig:&'static Configuration = &REQUEST_CONFIG;
-    let modResponse = create_local_resource(
+    let request_config:&'static Configuration = &REQUEST_CONFIG;
+    let mod_response = create_local_resource(
         cx,
         pretty_mod_id,
         move |id| async move {
             match id {
-                Some(id) => get_mod(&requestConfig, id).await,
+                Some(id) => get_mod(request_config, id).await,
                 None => None
             }
         }
     );
 
-    let statsResponse = create_local_resource(
+    let stats_response = create_local_resource(
         cx,
         pretty_mod_id,
         move |id| async move {
             match id {
-                Some(id) => get_stats(&requestConfig, id).await,
+                Some(id) => get_stats(request_config, id).await,
                 None => None
             }
         }
     );
 
-    let mod_downloads_over_time_str = move || statsResponse.with(cx, | res| res
+    let mod_downloads_over_time_str = move || stats_response.with(cx, |res| res
         .as_ref()
         .map(|r| r
             .overall_stats
@@ -79,12 +67,12 @@ pub fn StatsPage(
             .collect::<String>())
     );
 
-    let mod_name = move || modResponse.with(cx, |res| res
+    let mod_name = move || mod_response.with(cx, |res| res
         .as_ref()
         .map(|m| m.name.to_owned())
     );
 
-    return view! { cx,
+    view! { cx,
         <h1>"Stats for " {mod_name}</h1>
         <h2>"("{mod_id}")"</h2>
         <button on:click=on_click>"Click Me: " {count}</button>
@@ -104,22 +92,22 @@ static REQUEST_CONFIG: Lazy<Configuration> = Lazy::new(|| Configuration {
     api_key: None,
 });
 
-async fn get_stats(requestConfig: &Configuration, mod_id: String) -> Option<ModStatsResponse> {
+async fn get_stats(request_config: &Configuration, mod_id: String) -> Option<ModStatsResponse> {
     let id_str = mod_id.as_str();
     // log!("request fn! {}", id_ref.unwrap_or("NO VALUE FOR MOD ID"));
     let result = fibermc_sdk::apis::mods_api::api_v10_mods_id_stats_get(
-        &requestConfig,
+        request_config,
         id_str)
         .await
         .ok();
 
     log!("after result! {}", id_str);
-    return result;
+    result
 }
 
-async fn get_mod(requestConfig: &Configuration, mod_id: String) -> Option<ModResponse> {
+async fn get_mod(request_config: &Configuration, mod_id: String) -> Option<ModResponse> {
     let result = fibermc_sdk::apis::mods_api::api_v10_mods_id_get(
-        &requestConfig,
+        request_config,
         mod_id.as_str())
         .await
         // .ok()
@@ -130,6 +118,6 @@ async fn get_mod(requestConfig: &Configuration, mod_id: String) -> Option<ModRes
     if let Err(err) = result.as_ref() {
         log!("after mod result! {}", err);
     }
-    return result.ok();
+    result.ok()
 
 }
