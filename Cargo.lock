@@ -841,13 +841,14 @@ dependencies = [
 
 [[package]]
 name = "fibermc-sdk"
-version = "0.0.1"
-source = "git+https://github.com/John-Paul-R/fiber-sdk?branch=master#b4a9a48f59aa8219db0eaa540b7e1aba3f252bfc"
+version = "0.0.4"
+source = "git+https://github.com/John-Paul-R/fiber-sdk?branch=master#e90c267597dc3e5b50eb39119d3caab2416ebd8e"
 dependencies = [
  "reqwest",
  "serde",
  "serde_derive",
  "serde_json",
+ "serde_repr",
  "serde_with",
  "url",
  "uuid",
@@ -2306,6 +2307,17 @@ dependencies = [
  "percent-encoding",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "serde_repr"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.16",
 ]
 
 [[package]]

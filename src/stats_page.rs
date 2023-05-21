@@ -4,16 +4,18 @@ use std::future::{Future, IntoFuture};
 use std::num::ParseIntError;
 use std::string::ParseError;
 use std::sync::Arc;
+
 use fibermc_sdk::apis::configuration::Configuration;
 use fibermc_sdk::apis::mods_api::ApiV10ModsIdStatsGetError;
-use fibermc_sdk::models::ModStatsResponse;
+use fibermc_sdk::models::{ModResponse, ModStatsResponse};
 use futures::{FutureExt, TryFutureExt};
-
+use futures::future::OptionFuture;
 use leptos::*;
 use leptos_router::{IntoParam, Params, ParamsError, use_params, use_params_map};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
 use crate::my_uuid::MyUuid;
 
 #[derive(Params)]
@@ -21,8 +23,6 @@ use crate::my_uuid::MyUuid;
 pub struct StatsPageParams {
     mod_id: MyUuid,
 }
-
-
 
 #[component]
 pub fn StatsPage(
@@ -45,31 +45,48 @@ pub fn StatsPage(
 
     log!("render, kinda!");
 
+    let pretty_mod_id = move || mod_id().ok().map(|id| id.to_pretty_string());
     let requestConfig:&'static Configuration = &REQUEST_CONFIG;
-    let statsResponse = create_local_resource(
+    let modResponse = create_local_resource(
         cx,
-        move || mod_id().ok().map(|id| id.to_pretty_string()),
+        pretty_mod_id,
         move |id| async move {
-            get_stats(&requestConfig, id).await
+            match id {
+                Some(id) => get_mod(&requestConfig, id).await,
+                None => None
+            }
         }
     );
 
-    // let mod_name: &str = "Essential Commands";
+    let statsResponse = create_local_resource(
+        cx,
+        pretty_mod_id,
+        move |id| async move {
+            match id {
+                Some(id) => get_stats(&requestConfig, id).await,
+                None => None
+            }
+        }
+    );
 
-    let mod_downloads_over_time_str = move || statsResponse
-        .read(cx)
-        // .as_ref()
-        .and_then(|v| v)
-        .map(|r| r.0
+    let mod_downloads_over_time_str = move || statsResponse.with(cx, | res| res
+        .as_ref()
+        .map(|r| r
             .overall_stats
             .iter()
-            .cloned()
             .map(|el| format!("({}, {})", el.downloads, el.timestamp))
             .intersperse("\n".to_owned())
-            .collect::<String>());
+            .collect::<String>())
+    );
+
+    let mod_name = move || modResponse.with(cx, |res| res
+        .as_ref()
+        .map(|m| m.name.to_owned())
+    );
 
     return view! { cx,
-        <h1>"Stats for " <b>{mod_id}</b></h1>
+        <h1>"Stats for " {mod_name}</h1>
+        <h2>"("{mod_id}")"</h2>
         <button on:click=on_click>"Click Me: " {count}</button>
         <div>{mod_downloads_over_time_str}</div>
     }
@@ -87,38 +104,32 @@ static REQUEST_CONFIG: Lazy<Configuration> = Lazy::new(|| Configuration {
     api_key: None,
 });
 
-#[derive(Serialize, Deserialize, Clone)]
-struct MyModStatsResponse(ModStatsResponse);
+async fn get_stats(requestConfig: &Configuration, mod_id: String) -> Option<ModStatsResponse> {
+    let id_str = mod_id.as_str();
+    // log!("request fn! {}", id_ref.unwrap_or("NO VALUE FOR MOD ID"));
+    let result = fibermc_sdk::apis::mods_api::api_v10_mods_id_stats_get(
+        &requestConfig,
+        id_str)
+        .await
+        .ok();
 
-impl MyModStatsResponse {
-    pub fn get(self) -> ModStatsResponse {
-        return self.0
-    }
-}
-
-async fn get_stats(requestConfig: &Configuration, mod_id: Option<String>) -> Option<MyModStatsResponse> {
-    let id_ref = mod_id.as_ref().map(|s| s.as_str());
-    log!("request fn! {}", id_ref.unwrap_or("NO VALUE FOR MOD ID"));
-    let result = match id_ref {
-        Some(id_str) => fibermc_sdk::apis::mods_api::api_v10_mods_id_stats_get(
-            &requestConfig,
-            id_str)
-            .await.ok()
-            .map(MyModStatsResponse),
-        None => None,
-    };
-
-    log!("after result! {}", id_ref.unwrap_or("NO VALUE FOR MOD ID"));
+    log!("after result! {}", id_str);
     return result;
 }
 
-async fn parse_stats(
-    fut_res: Box<Result<ModStatsResponse, fibermc_sdk::apis::Error<ApiV10ModsIdStatsGetError>>>
-) -> MyModStatsResponse
-{
-    // Box::into_pin(fut_res)
-        // .await
-    fut_res
-        .map(MyModStatsResponse)
-        .unwrap_or_else(|_| todo!())
+async fn get_mod(requestConfig: &Configuration, mod_id: String) -> Option<ModResponse> {
+    let result = fibermc_sdk::apis::mods_api::api_v10_mods_id_get(
+        &requestConfig,
+        mod_id.as_str())
+        .await
+        // .ok()
+        ;
+    // there is an error at deserialization time that we are throwing away here...
+    // There _must_ be a better way to propagate these errors through in leptos...
+    log!("after mod result! {}", mod_id);
+    if let Err(err) = result.as_ref() {
+        log!("after mod result! {}", err);
+    }
+    return result.ok();
+
 }
