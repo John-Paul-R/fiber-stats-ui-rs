@@ -16,7 +16,7 @@ pub struct StatsPageParams {
 #[allow(non_snake_case)]
 pub fn StatsPage(
     cx: Scope,
-    params: Memo<Result<StatsPageParams, ParamsError>>
+    params: Memo<Result<StatsPageParams, ParamsError>>,
 ) -> impl IntoView {
     let mod_id = move || {
         params.clone().with(|p_outer| {
@@ -34,7 +34,7 @@ pub fn StatsPage(
     log!("render, kinda!");
 
     let pretty_mod_id = move || mod_id().ok().map(|id| id.to_pretty_string());
-    let request_config:&'static Configuration = &REQUEST_CONFIG;
+    let request_config: &'static Configuration = &REQUEST_CONFIG;
     let mod_response = create_local_resource(
         cx,
         pretty_mod_id,
@@ -43,7 +43,7 @@ pub fn StatsPage(
                 Some(id) => get_mod(request_config, id).await,
                 None => None
             }
-        }
+        },
     );
 
     let stats_response = create_local_resource(
@@ -54,7 +54,7 @@ pub fn StatsPage(
                 Some(id) => get_stats(request_config, id).await,
                 None => None
             }
-        }
+        },
     );
 
     let mod_downloads_over_time_str = move || stats_response.with(cx, |res| res
@@ -64,12 +64,12 @@ pub fn StatsPage(
             .iter()
             .map(|el| format!("({}, {})", el.downloads, el.timestamp))
             .intersperse("\n".to_owned())
-            .collect::<String>())
+            .collect::<String>()),
     );
 
     let mod_name = move || mod_response.with(cx, |res| res
         .as_ref()
-        .map(|m| m.name.to_owned())
+        .map(|m| m.name.to_owned()),
     );
 
     view! { cx,
@@ -119,5 +119,4 @@ async fn get_mod(request_config: &Configuration, mod_id: String) -> Option<ModRe
         log!("after mod result! {}", err);
     }
     result.ok()
-
 }

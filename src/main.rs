@@ -26,9 +26,9 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/", site_root))
         //.wrap(middleware::Compress::default())
     })
-    .bind(&addr)?
-    .run()
-    .await
+        .bind(&addr)?
+        .run()
+        .await
 }
 
 #[cfg(not(feature = "ssr"))]

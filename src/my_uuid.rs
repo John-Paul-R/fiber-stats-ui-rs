@@ -20,7 +20,6 @@ impl IntoParam for MyUuid {
             .map(|uuid| uuid.map(MyUuid))
             .map(|res| res.map_err(|err| ParamsError::Params(Arc::new(err))))//format!("Failed to parse '{}'", name)
             .unwrap_or_else(|| Err(ParamsError::MissingParam(name.to_string())))
-
     }
 }
 
