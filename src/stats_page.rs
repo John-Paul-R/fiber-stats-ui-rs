@@ -60,7 +60,7 @@ pub fn StatsPage(
         },
     );
 
-    let mod_downloads_over_time_str = move || stats_response.with(cx, |res| res
+    let mod_downloads_over_time_vws = move || stats_response.with(cx, |res| res
         .as_ref()
         .map(|r| r
             .overall_stats
@@ -83,7 +83,10 @@ pub fn StatsPage(
 
     view! { cx,
         {mod_overview}
-        <div>{mod_downloads_over_time_str}</div>
+        <details>
+            <summary>"View Data Points List"</summary>
+            <div>{mod_downloads_over_time_vws}</div>
+        </details>
         {mod_stats_view}
     }
 }
@@ -164,7 +167,7 @@ fn ModStatsSection(
     view! { cx,
         <div>
             <h3>"Stats"</h3>
-            <canvas id="my_plot" width=1024 height=1024/>
+            <canvas id="my_plot" width=800 height=600 />
         </div>
     }
 }
@@ -186,12 +189,14 @@ pub fn draw_series(
 
     let mut chart = ChartBuilder::on(&root)
         .margin(64u32)
-        .caption(format!("Downloads Over Time"), font)
+        .caption("Downloads Over Time", font)
         .x_label_area_size(30u32)
         .y_label_area_size(30u32)
         .build_cartesian_2d(min.0..max.0, min.1..max.1)?;
 
-    chart.configure_mesh().x_labels(3).y_labels(3)
+    chart.configure_mesh()
+        .x_labels(5)
+        .y_labels(8)
         .x_label_formatter(&|v| NaiveDateTime::from_timestamp_millis(v.clone())
             .unwrap()
             .format("%Y-%m-%d")
@@ -199,7 +204,7 @@ pub fn draw_series(
         .draw()?;
 
     for s in series {
-        chart.draw_series(s.point_size(5))?;
+        chart.draw_series(s.point_size(2))?;
     }
 
     root.present()?;
