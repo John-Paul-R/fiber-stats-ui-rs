@@ -1,15 +1,13 @@
-use std::fmt::Debug;
 use std::time::Duration;
 
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
 use leptos::*;
+use leptos::html::Div;
+use leptos_meta::*;
 use leptos_router::{IntoParam, Params, ParamsError};
-use plotters::chart::SeriesAnno;
 use plotters::prelude::*;
-use plotters::prelude::full_palette::GREEN_900;
-use plotters::style::full_palette::{GREEN_200, GREEN_300, GREEN_600, ORANGE_200, ORANGE_300, ORANGE_600};
-use plotters_canvas::CanvasBackend;
+use plotters::style::full_palette::{BLUE_600, GREEN_600, ORANGE_600};
 
 use crate::my_uuid::MyUuid;
 use crate::requests::mods::{get_mod, get_stats};
@@ -98,6 +96,7 @@ fn StatsPageModSummary(
     mod_response: ModResponse,
 ) -> impl IntoView {
     view! { cx,
+        <Title text={format!("Stats for {}", mod_response.name)}/>
         <h1>"Stats for " {mod_response.name}</h1>
         <div>"("{mod_response.id.hyphenated().to_string()}")"</div>
         <p>{mod_response.summary}</p>
@@ -114,14 +113,14 @@ fn parse_to_timestamp(s: &str) -> i64 {
         .timestamp_millis()
 }
 
-fn parse_to_timestamps(s: &Vec<TimestampedModStats>) -> Vec<i64> {
+fn parse_to_timestamps(s: &[TimestampedModStats]) -> Vec<i64> {
     s.iter()
         .map(|s| s.timestamp.as_str())
         .map(parse_to_timestamp)
         .collect()
 }
 
-fn line_series_from_mod_stats<S>(s: &Vec<TimestampedModStats>, style: S) -> LineSeries<CanvasBackend, (i64, i64)>
+fn line_series_from_mod_stats<S>(s: &[TimestampedModStats], style: S) -> LineSeries<SVGBackend, (i64, i64)>
     where S: Into<ShapeStyle> {
     LineSeries::new(
         s.iter()
@@ -139,6 +138,8 @@ fn ModStatsSection(
     cx: Scope,
     mod_stats: ModStatsResponse,
 ) -> impl IntoView {
+    let container_ref = create_node_ref::<Div>(cx);
+
     set_timeout(move || {
         if mod_stats.overall_stats.is_empty() {
             return;
@@ -147,27 +148,49 @@ fn ModStatsSection(
         let max_downloads = mod_stats.overall_stats.iter().map(|s| s.downloads).max().unwrap();
         let upper_downloads_axis_bound = ((max_downloads as f32) * (1f32 + padding_frac)) as i64;
         let timestamps = parse_to_timestamps(&mod_stats.overall_stats);
-        let min_date = timestamps.iter().min().unwrap().clone();
-        let max_date = timestamps.iter().max().unwrap().clone();
+        let min_date = *timestamps.iter().min().unwrap();
+        let max_date = *timestamps.iter().max().unwrap();
 
-        let overall_series = line_series_from_mod_stats(&mod_stats.overall_stats, &BLUE);
-        let modrinth_series = line_series_from_mod_stats(&mod_stats.modrinth_stats, &GREEN_600);
-        let curse_series = line_series_from_mod_stats(&mod_stats.curse_forge_stats, &ORANGE_600);
+        let overall_series = line_series_from_mod_stats(&mod_stats.overall_stats, BLUE_600);
+        let modrinth_series = line_series_from_mod_stats(&mod_stats.modrinth_stats, GREEN_600);
+        let curse_series = line_series_from_mod_stats(&mod_stats.curse_forge_stats, ORANGE_600);
 
-        draw_series(
-            "my_plot",
+        log!("Overall data points count: {}", &mod_stats.overall_stats.len());
+        log!("Modrinth data points count: {}", &mod_stats.modrinth_stats.len());
+        log!("CurseForge data points count: {}", &mod_stats.curse_forge_stats.len());
+
+        let svg_string = draw_series(
             (min_date, 0i64),
             (max_date, upper_downloads_axis_bound),
             vec![overall_series, modrinth_series, curse_series],
         ).unwrap();
 
-        ()
+        container_ref.get()
+            .expect("Element should be loaded by the time this setTimeout runs")
+            .set_inner_html(&svg_string);
+
     }, Duration::from_secs(0));
 
     view! { cx,
         <div>
+            <Style>
+                """
+                #my_plot {
+                    background-color: unset; /*var(--color-base-1);*/
+                }
+                #my_plot text {
+                    fill: var(--color-text) !important;
+                }
+                #my_plot line {
+                    stroke: var(--color-text) !important;
+                }
+                #my_plot polyline[stroke=\"#000000\"] {
+                    stroke: var(--color-text) !important;
+                }
+                """
+            </Style>
             <h3>"Stats"</h3>
-            <canvas id="my_plot" width=800 height=600 />
+            <div id="my_plot" _ref=container_ref />
         </div>
     }
 }
@@ -176,37 +199,38 @@ fn ModStatsSection(
 pub type DrawResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 pub fn draw_series(
-    canvas_id: &str,
     min: (i64, i64),
     max: (i64, i64),
-    series: Vec<LineSeries<CanvasBackend, (i64, i64)>>,
-) -> DrawResult<impl Fn((i32, i32)) -> Option<(i64, i64)>> {
-    let backend = CanvasBackend::new(canvas_id).expect("cannot find canvas");
-    let root = backend.into_drawing_area();
-    let font: FontDesc = ("sans-serif", 20.0).into();
+    series: Vec<LineSeries<SVGBackend, (i64, i64)>>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut svg_content: String = "".to_string();
+    {
+        let backend = SVGBackend::with_string(&mut svg_content, (800, 600));
+        let root = backend.into_drawing_area();
+        let font: FontDesc = ("sans-serif", 20.0).into();
 
-    root.fill(&WHITE)?;
+        let mut chart = ChartBuilder::on(&root)
+            .margin(64u32)
+            .caption("Downloads Over Time", font)
+            .x_label_area_size(30u32)
+            .y_label_area_size(30u32)
+            .build_cartesian_2d(min.0..max.0, min.1..max.1)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .margin(64u32)
-        .caption("Downloads Over Time", font)
-        .x_label_area_size(30u32)
-        .y_label_area_size(30u32)
-        .build_cartesian_2d(min.0..max.0, min.1..max.1)?;
+        chart
+            .configure_mesh()
+            .x_labels(5)
+            .y_labels(8)
+            .x_label_formatter(&|v| NaiveDateTime::from_timestamp_millis(*v)
+                .unwrap()
+                .format("%Y-%m-%d")
+                .to_string())
+            .draw()?;
 
-    chart.configure_mesh()
-        .x_labels(5)
-        .y_labels(8)
-        .x_label_formatter(&|v| NaiveDateTime::from_timestamp_millis(v.clone())
-            .unwrap()
-            .format("%Y-%m-%d")
-            .to_string())
-        .draw()?;
+        for s in series {
+            chart.draw_series(s.point_size(2))?;
+        }
 
-    for s in series {
-        chart.draw_series(s.point_size(2))?;
+        root.present()?;
     }
-
-    root.present()?;
-    return Ok(chart.into_coord_trans());
+    Ok(svg_content)
 }
