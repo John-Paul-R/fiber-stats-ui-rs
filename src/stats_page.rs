@@ -1,9 +1,10 @@
+use std::ops::Range;
 use std::time::Duration;
 
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
-use leptos::*;
 use leptos::html::Div;
+use leptos::*;
 use leptos_meta::*;
 use leptos_router::{IntoParam, Params, ParamsError};
 use plotters::prelude::*;
@@ -120,8 +121,8 @@ fn line_series_from_mod_stats<S>(
     s: &[TimestampedModStats],
     style: S,
 ) -> LineSeries<SVGBackend, (i64, i64)>
-    where
-        S: Into<ShapeStyle>,
+where
+    S: Into<ShapeStyle>,
 {
     LineSeries::new(
         s.iter()
@@ -203,11 +204,11 @@ fn render_chart(mod_stats: &ModStatsResponse, container_ref: NodeRef<Div>) {
     );
 
     let svg_string = draw_series(
-        (min_date, 0i64),
-        (max_date, upper_downloads_axis_bound),
+        min_date..max_date,
+        0i64..upper_downloads_axis_bound,
         vec![overall_series, modrinth_series, curse_series],
     )
-        .unwrap();
+    .unwrap();
 
     container_ref
         .get()
@@ -219,8 +220,8 @@ fn render_chart(mod_stats: &ModStatsResponse, container_ref: NodeRef<Div>) {
 pub type DrawResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 pub fn draw_series(
-    min: (i64, i64),
-    max: (i64, i64),
+    x_range: Range<i64>,
+    y_range: Range<i64>,
     series: Vec<LineSeries<SVGBackend, (i64, i64)>>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut svg_content: String = "".to_string();
@@ -234,7 +235,7 @@ pub fn draw_series(
             .caption("Downloads Over Time", font)
             .x_label_area_size(30u32)
             .y_label_area_size(30u32)
-            .build_cartesian_2d(min.0..max.0, min.1..max.1)?;
+            .build_cartesian_2d(x_range, y_range)?;
 
         chart
             .configure_mesh()
