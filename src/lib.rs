@@ -3,10 +3,10 @@
 use cfg_if::cfg_if;
 
 pub mod app;
-mod stats_page;
-mod param_helper;
 mod my_uuid;
+mod param_helper;
 mod requests;
+mod stats_page;
 
 cfg_if! {
 if #[cfg(feature = "hydrate")] {
