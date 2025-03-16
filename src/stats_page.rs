@@ -1,14 +1,24 @@
+use std::io::Cursor;
 use std::ops::Range;
 use std::time::Duration;
 
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
-use leptos::html::Div;
+use leptos::attr::Scope;
+use leptos::control_flow::{For, Show};
+use leptos::html::{Div, HtmlElement, Script, Style, Title};
+use leptos::logging::log;
+use leptos::prelude::{
+    create_node_ref, set_timeout, signal, AnyView, ElementChild,
+    GlobalAttributes, LocalResource, Memo, NodeRef, NodeRefAttribute, View,
+    With,
+};
 use leptos::*;
-use leptos_meta::*;
-use leptos_router::{IntoParam, Params, ParamsError};
+use leptos_router::params::{Params, ParamsError};
 use plotters::prelude::*;
 use plotters::style::full_palette::{BLUE_600, GREEN_600, ORANGE_600};
+use quick_xml::events::Event;
+use quick_xml::Writer;
 
 use crate::my_uuid::MyUuid;
 use crate::requests::mods::{get_mod, get_stats};
@@ -21,7 +31,6 @@ pub struct StatsPageParams {
 #[component]
 #[allow(non_snake_case)]
 pub fn StatsPage(
-    cx: Scope,
     params: Memo<Result<StatsPageParams, ParamsError>>,
 ) -> impl IntoView {
     let mod_id = move || {
@@ -34,68 +43,87 @@ pub fn StatsPage(
     log!("render, kinda!");
 
     let pretty_mod_id = move || mod_id().ok().map(|id| id.to_pretty_string());
-    let mod_response =
-        create_local_resource(cx, pretty_mod_id, move |id| async move {
-            match id {
-                Some(id) => get_mod(id).await,
-                None => None,
-            }
-        });
+    let mod_response = LocalResource::new(move || async move {
+        match pretty_mod_id() {
+            Some(id) => get_mod(id).await,
+            None => None,
+        }
+    });
 
-    let stats_response =
-        create_local_resource(cx, pretty_mod_id, move |id| async move {
-            match id {
-                Some(id) => get_stats(id).await,
-                None => None,
-            }
-        });
+    let stats_response = LocalResource::new(move || async move {
+        match pretty_mod_id() {
+            Some(id) => get_stats(id).await,
+            None => None,
+        }
+    });
 
-    let mod_downloads_over_time_vws = move || {
-        stats_response.with(cx, |res| {
-            res.as_ref().map(|r| {
-                r.overall_stats
-                    .iter()
-                    .map(|el| format!("({}, {})", el.downloads, el.timestamp))
-                    .map(|s| view! { cx, <div>{s}</div> }.into_view(cx))
-                    .collect::<View>()
+    let ModDownloadsOverTimeView = move || {
+        let stats = move || {
+            stats_response.with(|res| {
+                res.as_ref()
+                    .and_then(|r| r.as_ref())
+                    .map(|r| r.overall_stats.clone())
             })
-        })
+        };
+
+        view! {
+            <Show
+                when=move || stats().is_some()
+                fallback=move || view! { <p>"No stats available"</p> }
+            >
+                <For
+                    each=move || stats().unwrap_or_default()
+                    key=|el| el.timestamp.clone()
+                    let:el
+                >
+                    <div>{format!("({}, {})", el.downloads, el.timestamp)}</div>
+                </For>
+            </Show>
+        }
     };
 
-    let mod_overview = move || {
-        mod_response.with(cx, |res| {
-            res.as_ref().map(
-                |m| view! {cx, <StatsPageModSummary mod_response=m.clone()/>},
-            )
-        })
-    };
-
-    let mod_stats_view = move || {
-        stats_response.with(cx, |res| {
+    let ModOverviewView = move || {
+        mod_response.with(|res| {
             res.as_ref()
-                .map(|msr| {
-                    (view! {cx, <ModStatsSection mod_stats=msr.clone()/>})
-                        .into_view(cx)
-                })
-                .unwrap_or_else(|| view! {cx, <p>"Err!"</p>}.into_view(cx))
+                .and_then(|res| res.as_ref())
+                .map(|m| view! {<StatsPageModSummary mod_response=m.clone()/>})
         })
     };
 
-    view! { cx,
-        {mod_overview}
+    let ModStatsView = move || {
+        let maybe_stats = move || {
+            stats_response.with(|res| {
+                res.as_ref()
+                    .and_then(|msr| msr.as_ref())
+                    .map(|msr| msr.clone())
+            })
+        };
+
+        view! {
+            <Show
+                when=move || maybe_stats().is_some()
+                fallback=move || view! { <p>"Err!"</p> }
+            >
+                <ModStatsSection mod_stats=maybe_stats().unwrap()/>
+            </Show>
+        }
+    };
+
+    view! {
+        <ModOverviewView/>
         <details>
             <summary>"View Data Points List"</summary>
-            <div>{mod_downloads_over_time_vws}</div>
+            <div><ModDownloadsOverTimeView/></div>
         </details>
-        {mod_stats_view}
+        <ModStatsView/>
     }
 }
 
 #[component]
 #[allow(non_snake_case)]
-fn StatsPageModSummary(cx: Scope, mod_response: ModResponse) -> impl IntoView {
-    view! { cx,
-        <Title text={format!("Stats for {}", mod_response.name)}/>
+fn StatsPageModSummary(mod_response: ModResponse) -> impl IntoView {
+    view! {
+        <title>{format!("Stats for {}", mod_response.name)}</title>
         <h1>"Stats for " {mod_response.name}</h1>
         <div>"("{mod_response.id.hyphenated().to_string()}")"</div>
         <p>{mod_response.summary}</p>
@@ -134,17 +162,17 @@ where
 
 #[component]
 #[allow(non_snake_case)]
-fn ModStatsSection(cx: Scope, mod_stats: ModStatsResponse) -> impl IntoView {
-    let container_ref = create_node_ref::<Div>(cx);
+fn ModStatsSection(mod_stats: ModStatsResponse) -> impl IntoView {
+    let container_ref = NodeRef::<Div>::new();
 
     set_timeout(
         move || render_chart(&mod_stats, container_ref),
         Duration::from_secs(0),
     );
 
-    view! { cx,
+    view! {
         <div>
-            <Style>
+            <style>
                 """
                 #my_plot {
                     background-color: unset; /*var(--color-base-1);*/
@@ -158,10 +186,50 @@ fn ModStatsSection(cx: Scope, mod_stats: ModStatsResponse) -> impl IntoView {
                 #my_plot polyline[stroke=\"#000000\"] {
                     stroke: var(--color-text) !important;
                 }
+                #my_plot circle::after {
+                    content: attr(data-content);
+                    width: 32px;
+                    height: 32px;
+                    background-color: red;
+                }
+                #my_plot_tooltip {
+                    background-color: var(--color-element-1);
+                }
                 """
-            </Style>
+            </style>
+            <script>
+"""
+setTimeout(() => {
+    // we need to wait for the svg to load, this is kind of painful...
+    console.log('value from js');
+    const tooltip = document.getElementById('my_plot_tooltip');
+    const circles = document.querySelectorAll('#my_plot circle');
+    console.log('Circle count from js: ', circles.length);
+
+    for (const circle of circles) {
+        circle.addEventListener('pointerenter', (e) => {
+            const { clientX, clientY } = e;
+            console.log(e);
+            tooltip.style.display = 'block';
+            tooltip.style.position = 'absolute';
+            tooltip.style.left = clientX;
+            tooltip.style.top = clientY;
+            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
+        });
+        circle.addEventListener('pointerleave', (e) => {
+            const { clientX, clientY } = e;
+            tooltip.style.display = 'none';
+            tooltip.style.left = clientX;
+            tooltip.style.top = clientY;
+            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
+        });
+    }
+}, 1000)
+"""
+            </script>
             <h3>"Stats"</h3>
-            <div id="my_plot" _ref=container_ref />
+            <div id="my_plot" node_ref=container_ref />
+            <div id="my_plot_tooltip" />
         </div>
     }
 }
@@ -210,10 +278,48 @@ fn render_chart(mod_stats: &ModStatsResponse, container_ref: NodeRef<Div>) {
     )
     .unwrap();
 
-    container_ref
-        .get()
-        .expect("Element should be loaded by the time this setTimeout runs")
-        .set_inner_html(&svg_string);
+    let mut svg_reader = ::quick_xml::reader::Reader::from_str(&svg_string);
+    let all_points: Vec<TimestampedModStats> = {
+        let mut pts = mod_stats.overall_stats.clone();
+        pts.append(&mut mod_stats.modrinth_stats.clone());
+        pts.append(&mut mod_stats.curse_forge_stats.clone());
+        pts
+    };
+
+    let mut writer = Writer::new(Cursor::new(Vec::new()));
+
+    let mut idx = 0;
+    loop {
+        match svg_reader.read_event() {
+            // exits the loop when reaching end of file
+            Ok(Event::Eof) => break,
+
+            Ok(Event::Empty(e)) if e.name().as_ref() == b"circle" => {
+                log!("circle {}", idx);
+                let point = &all_points[idx];
+                idx += 1;
+                let mut elem = e.into_owned();
+                elem.push_attribute(("data-y", &*point.downloads.to_string()));
+                elem.push_attribute(("data-x", &*point.timestamp.to_string()));
+                assert!(writer.write_event(Event::Empty(elem)).is_ok());
+            }
+            Ok(e) => {
+                assert!(writer.write_event(e).is_ok())
+            }
+            Err(e) => panic!(
+                "Error at position {}: {:?}",
+                svg_reader.buffer_position(),
+                e
+            ),
+        }
+    }
+    let res_data = writer.into_inner().into_inner();
+    let res = std::str::from_utf8(&res_data).unwrap().to_string();
+
+    container_ref.on_load(move |f| {
+        f//.expect("Element should be loaded by the time this setTimeout runs")
+            .set_inner_html(&res)
+    });
 }
 
 /// Type alias for the result of a drawing function.
