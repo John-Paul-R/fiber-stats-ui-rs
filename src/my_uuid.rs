@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use leptos::prelude::View;
 use leptos::*;
-use leptos_router::{IntoParam, ParamsError};
+use leptos_router::params::{IntoParam, ParamsError};
 use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
@@ -26,11 +27,10 @@ impl IntoParam for MyUuid {
     }
 }
 
-impl IntoView for MyUuid {
-    fn into_view(self, cx: Scope) -> View {
-        (view! { cx,
-            <>{self.0.hyphenated().to_string()}</>
-        })
-            .into_view(cx)
-    }
-}
+// impl IntoView for MyUuid {
+//     fn into_view(self) -> View<Self> {
+//         view! {
+//             <>{self.0.hyphenated().to_string()}</>
+//         }
+//     }
+// }

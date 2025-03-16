@@ -1,42 +1,63 @@
+use leptos::error::ErrorBoundary;
+use leptos::html::ElementExt;
+use leptos::logging::log;
+use leptos::prelude::{
+    create_signal, signal, ClassAttribute, CollectView, ElementChild, Get,
+    GlobalAttributes, GlobalOnAttributes, OnAttribute, Update,
+};
 use leptos::*;
-use leptos_meta::*;
+use leptos_router::components::{Route, Router, Routes};
+use leptos_router::hooks::use_params;
 use leptos_router::*;
 
 use crate::stats_page::{StatsPage, StatsPageParams};
 
 #[component]
-pub fn App(cx: Scope) -> impl IntoView {
+pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
-    provide_meta_context(cx);
+    // provide_meta_context(cx);
 
+    //     return     view! {
+    //                 <body id="page_container">
+    //
+    //         ///asdas
+    //         /// //
+    //         <div/>
+    //         //asd
+    //         <script src="https://static.jpcode.dev/js/multi-palette.min.js" />
+    // //asd
+    //         </body>
+    //     };
+
+    logging::log!("where do I run?");
     view! {
-        cx,
+        <!DOCTYPE html>
+            <head>
+            // <Style media="screen" id="palette_light_dark" />
+            // <Style>
+            //     """
+            //     body#page_container {
+            //         width: 100vw;
+            //         height: 100vh;
+            //     }
+            //     main#content_main {
+            //         overflow: auto;
+            //     }
+            //     """
+            // </Style>
+            <script src="https://static.jpcode.dev/js/multi-palette.min.js" />
 
-            <Style media="screen" id="palette_light_dark" />
-            <Style>
-                """
-                body#page_container {
-                    width: 100vw;
-                    height: 100vh;
-                }
-                main#content_main {
-                    overflow: auto;
-                }
-                """
-            </Style>
-            <Script src="https://static.jpcode.dev/js/multi-palette.min.js" />
-
-            // injects a stylesheet into the document <head>
-            // id=leptos means cargo-leptos will hot-reload this stylesheet
-            <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
-            <Stylesheet href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
-            // <Stylesheet href="https://www.fibermc.com/css/search.css?v=1.0.1"/>
-            <Stylesheet href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+            // // injects a stylesheet into the document <head>
+            // // id=leptos means cargo-leptos will hot-reload this stylesheet
+            // <style id="leptos" href="/pkg/leptos_start.css"/>
+            <link rel="stylesheet" href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
+            // // <Stylesheet href="https://www.fibermc.com/css/search.css?v=1.0.1"/>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
 
 
             // sets the document title
-            <Title text="Welcome to Leptos"/>
-
+            <title>Welcome to Leptos</title>
+            </head>
         <body id="page_container">
 
             <header>
@@ -62,25 +83,27 @@ pub fn App(cx: Scope) -> impl IntoView {
                     <div id="content_body">
                         <ErrorBoundary
                             // the fallback receives a signal containing current errors
-                            fallback=|cx, errors| view! { cx,
+                            fallback=|errors| view! {
                                 <div class="error">
                                     <p>"An unexpected error occurred! Errors: "</p>
                                     // we can render a list of errors as strings, if we'd like
                                     <ul>
-                                        {move || errors.get()
-                                            .into_iter()
-                                            .map(|(_, e)| view! { cx, <li>{e.to_string()}</li>})
-                                            .collect_view(cx)
+                                        {move || errors
+                                            .get()
+                                            .iter()
+                                            .map(|(_, e)| view! {<li>{e.to_string()}</li>})
+                                            .collect_view()
                                         }
                                     </ul>
                                 </div>
                             }
                         >
-                            <Routes>
-                                <Route path="" view=|cx| view! { cx, <HomePage/> }/>
-                                <Route path="stats/:mod_id" view=|cx| {
-                                    let params = use_params::<StatsPageParams>(cx);
-                                    view! { cx, <StatsPage params=params/> }
+        // <HomePage/>
+                            <Routes fallback=|| "Not found">
+                                <Route path=path!("") view=|| view! {<HomePage/>}/>
+                                <Route path=path!("stats/:mod_id") view=move || {
+                                    let params = use_params::<StatsPageParams>();
+                                    view! { <StatsPage params=params/> }
                                 }/>
                             </Routes>
                         </ErrorBoundary>
@@ -93,15 +116,24 @@ pub fn App(cx: Scope) -> impl IntoView {
 
 /// Renders the home page of your application.
 #[component]
-fn HomePage(cx: Scope) -> impl IntoView {
+fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
-    let (count, set_count) = create_signal(cx, 0);
-    let on_click = move |_| set_count.update(|count| *count += 1);
+    let (count, set_count) = signal(0);
+    // let on_click = move |a| {
+    //     set_count.update(|count| *count += 1);
+    //     log!("Clicked {} times", count.get());
+    // };
 
-    view! { cx,
+    view! {
         <div>
             <h1>"Welcome to Leptos!"</h1>
-            <button on:click=on_click>"Click Me: " {count}</button>
+        <input type="text" on:keydown=|e| log!("key") on:change=|e| log!("change")/>
+        <button on:click=move |evt| {
+            evt.prevent_default();
+            set_count.update(|c| *c += 1);
+            log!("Clicked!");
+        }>
+        "Click Me!: " {count.get()}</button>
         </div>
         <a href="./stats">"View mod stats"</a>
     }

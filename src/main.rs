@@ -1,3 +1,5 @@
+use leptos::config::get_configuration;
+
 #[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -7,11 +9,12 @@ async fn main() -> std::io::Result<()> {
     use leptos::*;
     use leptos_actix::{generate_route_list, LeptosRoutes};
 
-    let conf = get_configuration(None).await.unwrap();
+    let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     // Generate the list of routes in your Leptos App
-    let routes = generate_route_list(|cx| view! { cx, <App/> });
+    let routes = generate_route_list(|| view! { <App/> });
 
+    println!("Running server on {}", &addr);
     HttpServer::new(move || {
         let leptos_options = &conf.leptos_options;
         let site_root = &leptos_options.site_root;
@@ -19,16 +22,16 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
             .leptos_routes(
-                leptos_options.to_owned(),
+                // leptos_options.to_owned(),
                 routes.to_owned(),
-                |cx| view! { cx, <App/> },
+                || view! { <App/> },
             )
-            .service(Files::new("/", site_root))
+            .service(Files::new("/", site_root.as_ref()))
         //.wrap(middleware::Compress::default())
     })
-        .bind(&addr)?
-        .run()
-        .await
+    .bind(&addr)?
+    .run()
+    .await
 }
 
 #[cfg(not(feature = "ssr"))]
