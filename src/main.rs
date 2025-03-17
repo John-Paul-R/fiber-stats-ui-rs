@@ -1,4 +1,5 @@
 use leptos::config::get_configuration;
+use leptos_meta::{provide_meta_context, MetaTags};
 
 #[cfg(feature = "ssr")]
 #[actix_web::main]
@@ -12,21 +13,43 @@ async fn main() -> std::io::Result<()> {
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     // Generate the list of routes in your Leptos App
-    let routes = generate_route_list(|| view! { <App/> });
+    let routes = generate_route_list(App);
 
     println!("Running server on {}", &addr);
+    println!("site_root: {}", conf.leptos_options.site_root);
+
     HttpServer::new(move || {
         let leptos_options = &conf.leptos_options;
         let site_root = &leptos_options.site_root;
 
         App::new()
             .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
-            .leptos_routes(
-                // leptos_options.to_owned(),
-                routes.to_owned(),
-                || view! { <App/> },
-            )
-            .service(Files::new("/", site_root.as_ref()))
+            .service(Files::new("/pkg", format!("{site_root}/pkg")))
+            .leptos_routes(routes.to_owned(), {
+                let leptos_options = leptos_options.clone();
+                move || {
+                    use leptos::prelude::*;
+
+                    view! {
+                        <!DOCTYPE html>
+                        <html lang="en">
+                            <head>
+                                <meta charset="utf-8"/>
+                                <meta
+                                    name="viewport"
+                                    content="width=device-width, initial-scale=1"
+                                />
+                                <AutoReload options=leptos_options.clone()/>
+                                <HydrationScripts options=leptos_options.clone()/>
+                                <MetaTags/>
+                            </head>
+                            <body>
+                                <App/>
+                            </body>
+                        </html>
+                    }
+                }})
+
         //.wrap(middleware::Compress::default())
     })
     .bind(&addr)?

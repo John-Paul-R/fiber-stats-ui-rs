@@ -1,11 +1,11 @@
 use leptos::error::ErrorBoundary;
-use leptos::html::ElementExt;
 use leptos::logging::log;
 use leptos::prelude::{
     create_signal, signal, ClassAttribute, CollectView, ElementChild, Get,
-    GlobalAttributes, GlobalOnAttributes, OnAttribute, Update,
+    GlobalAttributes, GlobalOnAttributes, OnAttribute, Update, *,
 };
 use leptos::*;
+use leptos_meta::{Stylesheet, *};
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::hooks::use_params;
 use leptos_router::*;
@@ -29,36 +29,35 @@ pub fn App() -> impl IntoView {
     //         </body>
     //     };
 
+    provide_meta_context();
     logging::log!("where do I run?");
     view! {
-        <!DOCTYPE html>
-            <head>
-            // <Style media="screen" id="palette_light_dark" />
-            // <Style>
-            //     """
-            //     body#page_container {
-            //         width: 100vw;
-            //         height: 100vh;
-            //     }
-            //     main#content_main {
-            //         overflow: auto;
-            //     }
-            //     """
-            // </Style>
-            <script src="https://static.jpcode.dev/js/multi-palette.min.js" />
+            <Style media="screen" id="palette_light_dark" />
+            <Style>
+                """
+                    body#page_container {
+                        width: 100vw;
+                        height: 100vh;
+                    }
+                    main#content_main {
+                        overflow: auto;
+                    }
+                    """
+            </Style>
+           <Script src="https://static.jpcode.dev/js/multi-palette.min.js" />
 
             // // injects a stylesheet into the document <head>
-            // // id=leptos means cargo-leptos will hot-reload this stylesheet
-            // <style id="leptos" href="/pkg/leptos_start.css"/>
-            <link rel="stylesheet" href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
+            // id=leptos means cargo-leptos will hot-reload this stylesheet
+           <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
+           <Stylesheet href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
             // // <Stylesheet href="https://www.fibermc.com/css/search.css?v=1.0.1"/>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+            <Stylesheet href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
 
 
             // sets the document title
-            <title>Welcome to Leptos</title>
-            </head>
-        <body id="page_container">
+            <Title text="Welcome to Leptos"/>
+
+        <div id="page_container">
 
             <header>
                 <div id="navbar">
@@ -98,7 +97,6 @@ pub fn App() -> impl IntoView {
                                 </div>
                             }
                         >
-        // <HomePage/>
                             <Routes fallback=|| "Not found">
                                 <Route path=path!("") view=|| view! {<HomePage/>}/>
                                 <Route path=path!("stats/:mod_id") view=move || {
@@ -110,7 +108,7 @@ pub fn App() -> impl IntoView {
                     </div>
                 </main>
             </Router>
-        </body>
+        </div>
     }
 }
 
@@ -119,21 +117,16 @@ pub fn App() -> impl IntoView {
 fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let (count, set_count) = signal(0);
-    // let on_click = move |a| {
-    //     set_count.update(|count| *count += 1);
-    //     log!("Clicked {} times", count.get());
-    // };
+    let on_click = move |a| {
+        set_count.update(|count| *count += 1);
+        log!("Clicked {} times", count.get());
+    };
 
     view! {
         <div>
             <h1>"Welcome to Leptos!"</h1>
         <input type="text" on:keydown=|e| log!("key") on:change=|e| log!("change")/>
-        <button on:click=move |evt| {
-            evt.prevent_default();
-            set_count.update(|c| *c += 1);
-            log!("Clicked!");
-        }>
-        "Click Me!: " {count.get()}</button>
+        <button on:click=on_click>Click Me: {move || count.get()}</button>
         </div>
         <a href="./stats">"View mod stats"</a>
     }
