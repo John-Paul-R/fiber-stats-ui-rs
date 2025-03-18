@@ -13,6 +13,7 @@ use leptos::prelude::{
     GlobalAttributes, LocalResource, Memo, NodeRef, NodeRefAttribute, View,
     With,
 };
+use leptos::suspense::Suspense;
 use leptos::*;
 use leptos_router::params::{Params, ParamsError};
 use plotters::prelude::*;
@@ -92,11 +93,8 @@ pub fn StatsPage(
 
     let ModStatsView = move || {
         let maybe_stats = move || {
-            stats_response.with(|res| {
-                res.as_ref()
-                    .and_then(|msr| msr.as_ref())
-                    .map(|msr| msr.clone())
-            })
+            stats_response
+                .with(|res| res.as_ref().and_then(|msr| msr.as_ref()).cloned())
         };
 
         view! {
@@ -110,12 +108,17 @@ pub fn StatsPage(
     };
 
     view! {
-        <ModOverviewView/>
-        <details>
-            <summary>"View Data Points List"</summary>
-            <div><ModDownloadsOverTimeView/></div>
-        </details>
-        <ModStatsView/>
+        <Suspense
+            fallback=move || view! { <p>"Loading..."</p> }
+        >
+        Testing!
+            {ModOverviewView}
+            <details>
+                <summary>"View Data Points List"</summary>
+                <div>{ModDownloadsOverTimeView}</div>
+            </details>
+            {ModStatsView}
+        </Suspense>
     }
 }
 
