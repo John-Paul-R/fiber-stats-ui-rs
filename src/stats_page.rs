@@ -4,14 +4,12 @@ use std::time::Duration;
 
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
-use leptos::attr::Scope;
 use leptos::control_flow::{For, Show};
-use leptos::html::{Div, HtmlElement, Script, Style, Title};
+use leptos::html::Div;
 use leptos::logging::log;
 use leptos::prelude::{
-    create_node_ref, set_timeout, signal, AnyView, ElementChild,
-    GlobalAttributes, LocalResource, Memo, NodeRef, NodeRefAttribute, View,
-    With,
+    set_timeout, ElementChild, GlobalAttributes, LocalResource, Memo, NodeRef,
+    NodeRefAttribute, With,
 };
 use leptos::suspense::Suspense;
 use leptos::*;
@@ -111,7 +109,6 @@ pub fn StatsPage(
         <Suspense
             fallback=move || view! { <p>"Loading..."</p> }
         >
-        Testing!
             {ModOverviewView}
             <details>
                 <summary>"View Data Points List"</summary>
