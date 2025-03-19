@@ -1,8 +1,8 @@
 use leptos::error::ErrorBoundary;
 use leptos::logging::log;
 use leptos::prelude::{
-    create_signal, signal, ClassAttribute, CollectView, ElementChild, Get,
-    GlobalAttributes, GlobalOnAttributes, OnAttribute, Update, *,
+    signal, ClassAttribute, CollectView, ElementChild, Get, GlobalAttributes,
+    OnAttribute, Update, *,
 };
 use leptos::*;
 use leptos_meta::{Stylesheet, *};
@@ -15,47 +15,33 @@ use crate::stats_page::{StatsPage, StatsPageParams};
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
-    // provide_meta_context(cx);
-
-    //     return     view! {
-    //                 <body id="page_container">
-    //
-    //         ///asdas
-    //         /// //
-    //         <div/>
-    //         //asd
-    //         <script src="https://static.jpcode.dev/js/multi-palette.min.js" />
-    // //asd
-    //         </body>
-    //     };
-
     provide_meta_context();
+
     logging::log!("where do I run?");
+
     view! {
-            <Style media="screen" id="palette_light_dark" />
-            <Style>
+        <Style media="screen" id="palette_light_dark" />
+        <Style>
+            """
+                body#page_container {
+                    width: 100vw;
+                    height: 100vh;
+                }
+                main#content_main {
+                    overflow: auto;
+                }
                 """
-                    body#page_container {
-                        width: 100vw;
-                        height: 100vh;
-                    }
-                    main#content_main {
-                        overflow: auto;
-                    }
-                    """
-            </Style>
-           <Script src="https://static.jpcode.dev/js/multi-palette.min.js" />
+        </Style>
+        <Script src="https://static.jpcode.dev/js/multi-palette.min.js" />
 
-            // // injects a stylesheet into the document <head>
-            // id=leptos means cargo-leptos will hot-reload this stylesheet
-           <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
-           <Stylesheet href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
-            // // <Stylesheet href="https://www.fibermc.com/css/search.css?v=1.0.1"/>
-            <Stylesheet href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+        // injects a stylesheet into the document <head>
+        <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
+        <Stylesheet href="https://www.fibermc.com/css/core_style.css?v=1.0.1"/>
+        // <Stylesheet href="https://www.fibermc.com/css/search.css?v=1.0.1"/>
+        <Stylesheet href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
 
 
-            // sets the document title
-            <Title text="Welcome to Leptos"/>
+        <Title text="Welcome to Leptos"/>
 
         <div id="page_container">
 
@@ -117,7 +103,7 @@ pub fn App() -> impl IntoView {
 fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let (count, set_count) = signal(0);
-    let on_click = move |a| {
+    let on_click = move |_| {
         set_count.update(|count| *count += 1);
         log!("Clicked {} times", count.get());
     };
@@ -125,7 +111,7 @@ fn HomePage() -> impl IntoView {
     view! {
         <div>
             <h1>"Welcome to Leptos!"</h1>
-        <input type="text" on:keydown=|e| log!("key") on:change=|e| log!("change")/>
+        <input type="text" on:keydown=|_| log!("key") on:change=|_| log!("change")/>
         <button on:click=on_click>Click Me: {move || count.get()}</button>
         </div>
         <a href="./stats">"View mod stats"</a>

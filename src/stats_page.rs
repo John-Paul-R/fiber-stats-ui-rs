@@ -4,14 +4,12 @@ use std::time::Duration;
 
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
-use leptos::attr::Scope;
 use leptos::control_flow::{For, Show};
-use leptos::html::{Div, HtmlElement, Script, Style, Title};
+use leptos::html::{Div, Script};
 use leptos::logging::log;
 use leptos::prelude::{
-    create_node_ref, set_timeout, signal, AnyView, ElementChild,
-    GlobalAttributes, LocalResource, Memo, NodeRef, NodeRefAttribute, View,
-    With,
+    set_timeout, ElementChild, GlobalAttributes, LocalResource, Memo, NodeRef,
+    NodeRefAttribute, With,
 };
 use leptos::suspense::Suspense;
 use leptos::*;
@@ -20,6 +18,7 @@ use plotters::prelude::*;
 use plotters::style::full_palette::{BLUE_600, GREEN_600, ORANGE_600};
 use quick_xml::events::Event;
 use quick_xml::Writer;
+use wasm_bindgen::UnwrapThrowExt;
 
 use crate::my_uuid::MyUuid;
 use crate::requests::mods::{get_mod, get_stats};
@@ -111,7 +110,6 @@ pub fn StatsPage(
         <Suspense
             fallback=move || view! { <p>"Loading..."</p> }
         >
-        Testing!
             {ModOverviewView}
             <details>
                 <summary>"View Data Points List"</summary>
@@ -167,11 +165,14 @@ where
 #[allow(non_snake_case)]
 fn ModStatsSection(mod_stats: ModStatsResponse) -> impl IntoView {
     let container_ref = NodeRef::<Div>::new();
+    let script_ref = NodeRef::<Script>::new();
 
     set_timeout(
         move || render_chart(&mod_stats, container_ref),
         Duration::from_secs(0),
     );
+
+    script_ref.on_load(|el| el.set_src("../assets/js/circles.js"));
 
     view! {
         <div>
@@ -200,36 +201,8 @@ fn ModStatsSection(mod_stats: ModStatsResponse) -> impl IntoView {
                 }
                 """
             </style>
-            <script>
-"""
-setTimeout(() => {
-    // we need to wait for the svg to load, this is kind of painful...
-    console.log('value from js');
-    const tooltip = document.getElementById('my_plot_tooltip');
-    const circles = document.querySelectorAll('#my_plot circle');
-    console.log('Circle count from js: ', circles.length);
 
-    for (const circle of circles) {
-        circle.addEventListener('pointerenter', (e) => {
-            const { clientX, clientY } = e;
-            console.log(e);
-            tooltip.style.display = 'block';
-            tooltip.style.position = 'absolute';
-            tooltip.style.left = clientX;
-            tooltip.style.top = clientY;
-            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
-        });
-        circle.addEventListener('pointerleave', (e) => {
-            const { clientX, clientY } = e;
-            tooltip.style.display = 'none';
-            tooltip.style.left = clientX;
-            tooltip.style.top = clientY;
-            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
-        });
-    }
-}, 1000)
-"""
-            </script>
+            <script node_ref=script_ref />
             <h3>"Stats"</h3>
             <div id="my_plot" node_ref=container_ref />
             <div id="my_plot_tooltip" />
@@ -316,13 +289,14 @@ fn render_chart(mod_stats: &ModStatsResponse, container_ref: NodeRef<Div>) {
             ),
         }
     }
-    let res_data = writer.into_inner().into_inner();
-    let res = std::str::from_utf8(&res_data).unwrap().to_string();
+    let svg_blob = writer.into_inner().into_inner();
+    let res = std::str::from_utf8(&svg_blob)
+        .map(|data| data.to_string())
+        .expect_throw(
+            "Failed to generate a download counts svg from the mod_response",
+        );
 
-    container_ref.on_load(move |f| {
-        f//.expect("Element should be loaded by the time this setTimeout runs")
-            .set_inner_html(&res)
-    });
+    container_ref.on_load(move |f| f.set_inner_html(&res));
 }
 
 /// Type alias for the result of a drawing function.
@@ -351,7 +325,7 @@ pub fn draw_series(
             .x_labels(5)
             .y_labels(8)
             .x_label_formatter(&|v| {
-                NaiveDateTime::from_timestamp_millis(*v)
+                DateTime::from_timestamp_millis(*v)
                     .unwrap()
                     .format("%Y-%m-%d")
                     .to_string()
