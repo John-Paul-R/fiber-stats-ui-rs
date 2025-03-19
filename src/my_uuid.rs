@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use leptos::prelude::View;
-use leptos::*;
 use leptos_router::params::{IntoParam, ParamsError};
 use uuid::Uuid;
 

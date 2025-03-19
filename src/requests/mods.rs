@@ -4,7 +4,6 @@ use std::panic::Location;
 use fibermc_sdk::apis::*;
 use fibermc_sdk::models::*;
 use leptos::logging::{error, log};
-use leptos::*;
 
 use crate::requests::config::REQUEST_CONFIG;
 

@@ -1,5 +1,3 @@
-use leptos::config::get_configuration;
-use leptos_meta::{provide_meta_context, MetaTags};
 
 #[cfg(feature = "ssr")]
 #[actix_web::main]

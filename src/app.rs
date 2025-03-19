@@ -1,8 +1,8 @@
 use leptos::error::ErrorBoundary;
 use leptos::logging::log;
 use leptos::prelude::{
-    create_signal, signal, ClassAttribute, CollectView, ElementChild, Get,
-    GlobalAttributes, GlobalOnAttributes, OnAttribute, Update, *,
+    signal, ClassAttribute, CollectView, ElementChild, Get,
+    GlobalAttributes, OnAttribute, Update, *,
 };
 use leptos::*;
 use leptos_meta::{Stylesheet, *};
