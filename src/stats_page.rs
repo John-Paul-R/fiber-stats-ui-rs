@@ -18,6 +18,7 @@ use plotters::prelude::*;
 use plotters::style::full_palette::{BLUE_600, GREEN_600, ORANGE_600};
 use quick_xml::events::Event;
 use quick_xml::Writer;
+use wasm_bindgen::UnwrapThrowExt;
 
 use crate::my_uuid::MyUuid;
 use crate::requests::mods::{get_mod, get_stats};
@@ -313,13 +314,14 @@ fn render_chart(mod_stats: &ModStatsResponse, container_ref: NodeRef<Div>) {
             ),
         }
     }
-    let res_data = writer.into_inner().into_inner();
-    let res = std::str::from_utf8(&res_data).unwrap().to_string();
+    let svg_blob = writer.into_inner().into_inner();
+    let res = std::str::from_utf8(&svg_blob)
+        .map(|data| data.to_string())
+        .expect_throw(
+            "Failed to generate a download counts svg from the mod_response",
+        );
 
-    container_ref.on_load(move |f| {
-        f//.expect("Element should be loaded by the time this setTimeout runs")
-            .set_inner_html(&res)
-    });
+    container_ref.on_load(move |f| f.set_inner_html(&res));
 }
 
 /// Type alias for the result of a drawing function.
@@ -348,7 +350,7 @@ pub fn draw_series(
             .x_labels(5)
             .y_labels(8)
             .x_label_formatter(&|v| {
-                NaiveDateTime::from_timestamp_millis(*v)
+                DateTime::from_timestamp_millis(*v)
                     .unwrap()
                     .format("%Y-%m-%d")
                     .to_string()
