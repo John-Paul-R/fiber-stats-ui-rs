@@ -31,7 +31,6 @@ setTimeout(() => {
     plotContainer.addEventListener('pointermove', (e) => {
         const {x: plotClientX, y: plotClientY} = plotContainer.getBoundingClientRect();
         const { clientX, clientY } = e;
-        console.log(e);
         tooltip.style.display = 'block';
         tooltip.style.position = 'absolute';
 
@@ -41,7 +40,6 @@ setTimeout(() => {
         tooltip.style.left = closestCircle.x + 'px';
         tooltip.style.top = closestCircle.y + 'px';
 
-        console.log(closestCircle, clientX, plotClientX);
         const xData = closestCircle.circle.attributes.getNamedItem('data-x').value;
     const xAsDate = new Date(xData);
       
