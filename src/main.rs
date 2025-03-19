@@ -1,4 +1,3 @@
-
 #[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -8,7 +7,7 @@ async fn main() -> std::io::Result<()> {
     use leptos::*;
     use leptos_actix::{generate_route_list, LeptosRoutes};
 
-    let conf = get_configuration(None).unwrap();
+    let conf = leptos::config::get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
@@ -23,6 +22,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
             .service(Files::new("/pkg", format!("{site_root}/pkg")))
+            .service(Files::new("/assets", format!("{site_root}")))
             .leptos_routes(routes.to_owned(), {
                 let leptos_options = leptos_options.clone();
                 move || {
@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
                                 />
                                 <AutoReload options=leptos_options.clone()/>
                                 <HydrationScripts options=leptos_options.clone()/>
-                                <MetaTags/>
+                                <leptos_meta::MetaTags/>
                             </head>
                             <body>
                                 <App/>

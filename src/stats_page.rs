@@ -5,7 +5,7 @@ use std::time::Duration;
 use chrono::*;
 use fibermc_sdk::models::{ModResponse, ModStatsResponse, TimestampedModStats};
 use leptos::control_flow::{For, Show};
-use leptos::html::Div;
+use leptos::html::{Div, Script};
 use leptos::logging::log;
 use leptos::prelude::{
     set_timeout, ElementChild, GlobalAttributes, LocalResource, Memo, NodeRef,
@@ -165,11 +165,14 @@ where
 #[allow(non_snake_case)]
 fn ModStatsSection(mod_stats: ModStatsResponse) -> impl IntoView {
     let container_ref = NodeRef::<Div>::new();
+    let script_ref = NodeRef::<Script>::new();
 
     set_timeout(
         move || render_chart(&mod_stats, container_ref),
         Duration::from_secs(0),
     );
+
+    script_ref.on_load(|el| el.set_src("../assets/js/circles.js"));
 
     view! {
         <div>
@@ -198,36 +201,8 @@ fn ModStatsSection(mod_stats: ModStatsResponse) -> impl IntoView {
                 }
                 """
             </style>
-            <script>
-"""
-setTimeout(() => {
-    // we need to wait for the svg to load, this is kind of painful...
-    console.log('value from js');
-    const tooltip = document.getElementById('my_plot_tooltip');
-    const circles = document.querySelectorAll('#my_plot circle');
-    console.log('Circle count from js: ', circles.length);
 
-    for (const circle of circles) {
-        circle.addEventListener('pointerenter', (e) => {
-            const { clientX, clientY } = e;
-            console.log(e);
-            tooltip.style.display = 'block';
-            tooltip.style.position = 'absolute';
-            tooltip.style.left = clientX;
-            tooltip.style.top = clientY;
-            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
-        });
-        circle.addEventListener('pointerleave', (e) => {
-            const { clientX, clientY } = e;
-            tooltip.style.display = 'none';
-            tooltip.style.left = clientX;
-            tooltip.style.top = clientY;
-            tooltip.innerText = circle.attributes.getNamedItem('data-y').value;
-        });
-    }
-}, 1000)
-"""
-            </script>
+            <script node_ref=script_ref />
             <h3>"Stats"</h3>
             <div id="my_plot" node_ref=container_ref />
             <div id="my_plot_tooltip" />
