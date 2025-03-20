@@ -10,13 +10,14 @@ setTimeout(() => {
     const plotContainer = plotWrapper.appendChild(document.createElement('div'));
     plotContainer.style.position = 'relative';
     plotContainer.appendChild(svg);
-    const tooltip = document.getElementById('my_plot_tooltip');
+    const tooltip = document.getElementById('my_plot_tooltip')
+    tooltip.style.display = 'block';
+    tooltip.style.position = 'absolute';
     plotContainer.appendChild(tooltip);
 
   const circles = document.querySelectorAll('#my_plot circle');
     console.log('value from js', circles);
     console.log('Circle count from js: ', circles.length);
-
 
     const positionedCircles = [];
     for (const circle of circles) {
@@ -28,24 +29,43 @@ setTimeout(() => {
 
     const kdtree = new KDTree(positionedCircles);
 
+    // enlarge the actual circle element on hover
+    let focusedPoint = null;
+    /** @param svgCircle {SVGCircleElement}*/
+    function focusPoint(svgCircle, x, y) {
+      if (focusedPoint === svgCircle) {
+        return;
+      } 
+      if (!!focusedPoint) {
+
+        focusedPoint.setAttribute('transform', '');
+        focusedPoint.transform = null;
+      }
+      svgCircle.setAttribute('transform', `scale(2,2) translate(-${x/2}, -${y/2})`);
+      focusedPoint = svgCircle;
+    }
+
+    // the only 'pointer move' event handler in this system, handles everything
     plotContainer.addEventListener('pointermove', (e) => {
         const {x: plotClientX, y: plotClientY} = plotContainer.getBoundingClientRect();
         const { clientX, clientY } = e;
-        tooltip.style.display = 'block';
-        tooltip.style.position = 'absolute';
 
         const closestCircle = kdtree.findNearest(
           clientX - plotClientX,
           clientY - plotClientY);
+  
+        // --- Update the tooltip ---
         tooltip.style.left = closestCircle.x + 'px';
         tooltip.style.top = closestCircle.y + 'px';
 
         const xData = closestCircle.circle.attributes.getNamedItem('data-x').value;
-    const xAsDate = new Date(xData);
-      
+        const xAsDate = new Date(xData);
         const xDataFormatted = xAsDate.getFullYear() + '-' + (xAsDate.getMonth() + 1) + '-' + xAsDate.getDate();
         const yData = closestCircle.circle.attributes.getNamedItem('data-y').value;
-        tooltip.innerText = `(${xDataFormatted}, ${yData})` 
+        tooltip.innerText = `(${xDataFormatted}, ${yData})`
+        
+        // --- style the point as focused (and deselect prev) ---
+        focusPoint(closestCircle.circle, closestCircle.x, closestCircle.y);
     });
 }, 1000);
 
